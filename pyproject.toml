@@ -1,0 +1,44 @@
+[project]
+name = "nutrition-rag"
+version = "0.1.0"
+description = "A RAG project for a nutrition FAQ"
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python"
+]
+readme = "README.md"
+authors = [
+  {name = "Ildi Szabo"},
+]
+requires-python = ">=3.10"
+dependencies = [
+    "openai==1.64.0",
+    "pandas==2.2.3",
+    "sentence-transformers==3.4.1",
+    "tomli>=1.1.0 ; python_full_version < '3.11'",
+    "qdrant-client>=1.14.1",
+    "torch==2.5.1 ; platform_machine != 'x86_64'",
+    "torch==2.5.1+cu124 ; platform_machine == 'x86_64'",
+    "streamlit>=1.46.0",
+    "seaborn>=0.13.2",
+    "haystack-ai==2.10.3",
+    "fastembed>=0.7.1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "dotenv",
+]
+
+[tool.uv]
+package = true
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cu124" }
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
