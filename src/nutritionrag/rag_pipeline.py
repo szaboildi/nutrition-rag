@@ -9,11 +9,13 @@ from nutritionrag.preprocessing import process_text
 import argparse
 from openai import OpenAI
 
+from uuid import uuid4
+
 
 
 def setup_vector_db(
     encoder_name:str="intfloat/e5-base", client_source:str=":memory:",
-    qdrant_cloud_api_key:str="None", from_scratch:bool=False,
+    qdrant_cloud_api_key:str="None", force_replace_collection:bool=False,
     input_folder:str="data/raw_input_files",
     collection_name:str="dummy_name", dist_name:str="COSINE"):
 
@@ -24,17 +26,19 @@ def setup_vector_db(
         client = QdrantClient(
             url=client_source, api_key=qdrant_cloud_api_key)
 
-    if not from_scratch:
+    if not force_replace_collection:
         print("Vector database loaded")
         return client, encoder
+    else:
+        client.delete_collection(collection_name=collection_name)
 
-    client.create_collection(
-        collection_name=collection_name,
-        vectors_config=models.VectorParams(
-            size=encoder.get_sentence_embedding_dimension(),  # Vector size is defined by used model
-            distance=getattr(models.Distance, dist_name.upper()),
-        ),
-    )
+        client.create_collection(
+            collection_name=collection_name,
+            vectors_config=models.VectorParams(
+                size=encoder.get_sentence_embedding_dimension(),  # Vector size is defined by used model
+                distance=getattr(models.Distance, dist_name.upper()),
+            ),
+        )
 
     file_names = glob.glob(f"{input_folder}/*")
     for file_name in file_names:
@@ -47,11 +51,10 @@ def setup_vector_db(
             collection_name=collection_name,
             points=[
                 models.PointStruct(
-                    id=idx, vector=encoder.encode(
+                    id=str(uuid4()), vector=encoder.encode(
                         doc["question"], normalize_embeddings=True).tolist(),
                     payload=doc)
-                for idx, doc in enumerate(input_passages_dict)
-            ],
+                for doc in input_passages_dict],
         )
 
     print("Vector database created")
@@ -88,13 +91,12 @@ def query_vector_db_list_qdrant(
 
 def rag_setup_qdrant(
     config:dict[str], api_key_variable:str="OPENAI_API_KEY",
-    qdrant_cloud_api_key_variable:str="QDRANT_CLOUD_API_KEY",
-    from_scratch:bool=False):
+    qdrant_cloud_api_key_variable:str="QDRANT_CLOUD_API_KEY"):
     vector_db_client, encoder = setup_vector_db(
         encoder_name=config["encoder_name"],
         client_source=config["client_source"],
         qdrant_cloud_api_key=os.environ.get(qdrant_cloud_api_key_variable),
-        from_scratch=from_scratch,
+        force_replace_collection=bool(config["force_replace_collection"]),
         input_folder=config["input_text_folder"],
         collection_name=config["collection_name"],
         dist_name=config["distance_type"])
@@ -204,11 +206,11 @@ def main():
     # print(args.config_name)
     # retrieve_and_eval(config_name=args.config_name)
     # vector_db_client, encoder, gen_api_client = rag_setup_qdrant(
-    #     config_name=args.config_name, from_scratch=True)
+    #     config_name=args.config_name)
 
 
     vector_db_client, encoder, gen_api_client = rag_setup_qdrant(
-        config=config[args.config_name], from_scratch=False)
+        config=config[args.config_name])
     print("#########################################")
 
     # answer = query_vector_db_once_qdrant(

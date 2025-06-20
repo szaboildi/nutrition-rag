@@ -12,12 +12,10 @@ with open(os.path.join("parameters.toml"), mode="rb") as fp:
     config = tomllib.load(fp)
 
 config_name = "default"
-from_scratch = False
 
 
 # Setup
-vector_db_client, encoder, llm_client = rag_setup_qdrant(
-    config=config[config_name], from_scratch=from_scratch)
+vector_db_client, encoder, llm_client = rag_setup_qdrant(config=config[config_name])
 
 
 # App functionality

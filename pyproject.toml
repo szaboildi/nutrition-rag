@@ -23,6 +23,7 @@ dependencies = [
     "seaborn>=0.13.2",
     "haystack-ai==2.10.3",
     "fastembed>=0.7.1",
+    "uuid>=1.30",
 ]
 
 [project.optional-dependencies]
