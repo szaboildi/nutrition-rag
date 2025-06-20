@@ -79,11 +79,10 @@ def query_vector_db_once_qdrant(
 
 
 def query_vector_db_list_qdrant(
-    client, encoder, question_list:list[str],
-    collection_name:str="dummy_name", k:int=5):
+    client, encoder, question_list:list[str], config:dict[str]):
     answer_list = [
         query_vector_db_once_qdrant(
-            client, encoder, q, collection_name, k) for q in question_list]
+            client, encoder, q, config) for q in question_list]
 
     return answer_list
 
@@ -99,8 +98,7 @@ def rag_setup_qdrant(
         from_scratch=from_scratch,
         input_folder=config["input_text_folder"],
         collection_name=config["collection_name"],
-        dist_name=config["distance_type"],
-        input_folder_qa=config["input_folder_qa"])
+        dist_name=config["distance_type"])
 
     api_client = OpenAI(api_key=os.environ.get(api_key_variable))
 
@@ -149,9 +147,7 @@ def llm_call(client:OpenAI, user_prompt:str,
 def rag_query_once_qdrant(
     query:str, vector_db, encoder, api_client, config:dict[str])-> tuple[str, str, dict]:
     retrieved_doc_dict = query_vector_db_once_qdrant(
-        vector_db, encoder, query,
-        collection_name = config["collection_name"],
-        k=config["retrieve_k"])
+        vector_db, encoder, query, config)
 
     print("Documents retrieved")
     # # Only return unique answers
@@ -211,34 +207,28 @@ def main():
     # vector_db_client, encoder, gen_api_client = rag_setup_qdrant(
     #     config_name=args.config_name, from_scratch=True)
 
-    vector_db_client, dense_embedding_model, bm25_embedding_model, late_interaction_embedding_model = setup_vector_db(
-        encoder_name=config[args.config_name]["encoder_name"],
-        client_source=config[args.config_name]["client_source"],
-        qdrant_cloud_api_key=os.environ.get("QDRANT_CLOUD_API_KEY"),
-        from_scratch=True,
-        input_folder=config[args.config_name]["input_text_folder"],
-        collection_name=config[args.config_name]["collection_name"],
-        dist_name=config[args.config_name]["distance_type"],
-        input_folder_qa=config[args.config_name]["input_folder_qa"],
-        sparse_retriever=config[args.config_name]["sparse_retriever"],
-        hybrid=True)
 
-    # vector_db_client, encoder, gen_api_client = rag_setup_qdrant(
-    #     config=config[args.config_name], from_scratch=False)
-    # print("#########################################")
+    vector_db_client, encoder, gen_api_client = rag_setup_qdrant(
+        config=config[args.config_name], from_scratch=False)
+    print("#########################################")
 
+    # answer = query_vector_db_once_qdrant(
+    #     vector_db_client, encoder,
+    #     "What should I snack on between lunch and dinner if I have diabetes?",
+    #     config[args.config_name])
+    # print(f'Retrieved {len(answer["retrieved"])} documents')
+
+    query, response, retrieved_docs = rag_query_once_qdrant(
+        "What should I snack on between lunch and dinner if I have diabetes?",
+        vector_db_client, encoder, gen_api_client, config=config[args.config_name])
+    print(query, response, retrieved_docs, sep="\n")
+
+    print("#########################################")
 
     # query, response, full_response = rag_query_once_qdrant(
-    #     "What should I snack on between lunch and dinner if I have diabetes?",
+    #     "How often should a dog eat?",
     #     vector_db_client, encoder, gen_api_client, config=config[args.config_name])
     # print(query, response, full_response, sep="\n")
-
-    # print("#########################################")
-
-    # # query, response, full_response = rag_query_once_qdrant(
-    # #     "How often should a dog eat?",
-    # #     vector_db_client, encoder, gen_api_client, config=config[args.config_name])
-    # # print(query, response, full_response, sep="\n")
 
 
 if __name__ == "__main__":
