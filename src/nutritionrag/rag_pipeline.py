@@ -26,12 +26,12 @@ def setup_vector_db(
         client = QdrantClient(
             url=client_source, api_key=qdrant_cloud_api_key)
 
-    if not force_replace_collection:
-        print("Vector database loaded")
-        return client, encoder
-    else:
-        client.delete_collection(collection_name=collection_name)
+    if force_replace_collection:
+        # Remove pre-existing collection
+        if client.collection_exists(collection_name=collection_name):
+            client.delete_collection(collection_name=collection_name)
 
+        # Recreate collection
         client.create_collection(
             collection_name=collection_name,
             vectors_config=models.VectorParams(
@@ -40,25 +40,32 @@ def setup_vector_db(
             ),
         )
 
-    file_names = glob.glob(f"{input_folder}/*")
-    for file_name in file_names:
-        # Set up the passages
-        input_passages_dict = process_text(path=file_name)
+        # Upload question-answer pairs from all files in the designated folder
+        file_names = glob.glob(f"{input_folder}/*")
+        for file_name in file_names:
+            # Set up the passages
+            input_passages_dict = process_text(path=file_name)
 
-        print(f"Text cleaned in {file_name}")
+            print(f"Text cleaned in {file_name}")
 
-        client.upload_points(
-            collection_name=collection_name,
-            points=[
-                models.PointStruct(
-                    id=str(uuid4()), vector=encoder.encode(
-                        doc["question"], normalize_embeddings=True).tolist(),
-                    payload=doc)
-                for doc in input_passages_dict],
-        )
+            # Tokenize, embed and upload texts to Qdrant vector database
+            client.upload_points(
+                collection_name=collection_name,
+                points=[
+                    models.PointStruct(
+                        id=str(uuid4()), vector=encoder.encode(
+                            doc["question"], normalize_embeddings=True).tolist(),
+                        payload=doc)
+                    for doc in input_passages_dict],
+            )
 
-    print("Vector database created")
-    return client, encoder
+        print("Vector database created")
+        return client, encoder
+
+    # Otherwise load pre-existing collection and return it to the user
+    else:
+        print("Vector database loaded")
+        return client, encoder
 
 
 def query_vector_db_once_qdrant(
