@@ -103,7 +103,7 @@ def rag_setup_qdrant(
         encoder_name=config["encoder_name"],
         client_source=config["client_source"],
         qdrant_cloud_api_key=os.environ.get(qdrant_cloud_api_key_variable),
-        force_replace_collection=bool(config["force_replace_collection"]),
+        force_replace_collection=config["force_replace_collection"]=="True",
         input_folder=config["input_text_folder"],
         collection_name=config["collection_name"],
         dist_name=config["distance_type"])
