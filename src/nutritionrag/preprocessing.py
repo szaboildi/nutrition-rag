@@ -4,10 +4,7 @@ import pandas as pd
 
 
 
-def process_text(
-    path, force_write_qa_passages:bool=False, input_folder_qa:str="data",
-    relevance_score_file_prefix:str="sample_qa_passage_lvl",
-    sample_qa_file:str="sample_qa.json"):
+def process_text(path):
     with open(path, "r") as f:
         qa_data_ls = json.load(f)
 
@@ -15,7 +12,8 @@ def process_text(
 
     # TODO: add more preprocessing and cleaning to account for less clean inputs
 
-    return [{"question": q, "answer": a}
+    return [{"question": q.strip().replace("’", "'"),
+             "answer": a.strip().replace("’", "'")}
             for q,a in list(zip(qa_data_df.questions,qa_data_df.answer))]
 
 
