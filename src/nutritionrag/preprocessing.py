@@ -5,6 +5,11 @@ import pandas as pd
 
 
 def process_text(path):
+    """
+    Load and process a json file at the given path,
+    create pairs of 1 question + 1 answer, clean them
+    and return the pairs as a list
+    """
     with open(path, "r") as f:
         qa_data_ls = json.load(f)
 
@@ -15,6 +20,7 @@ def process_text(path):
     return [{"question": q.strip().replace("’", "'"),
              "answer": a.strip().replace("’", "'")}
             for q,a in list(zip(qa_data_df.questions,qa_data_df.answer))]
+
 
 
 def main():

@@ -18,14 +18,24 @@ def setup_vector_db(
     qdrant_cloud_api_key:str="None", force_replace_collection:bool=False,
     input_folder:str="data/raw_input_files",
     collection_name:str="dummy_name", dist_name:str="COSINE"):
-
+    """
+    Process and encode text
+    Set up Qdrant vector database (local or on Qdrant Cloud) and return the
+    Qdrant client along with the encoder
+    """
+    # Dense embedder (incl. tokenizer)
     encoder = SentenceTransformer(encoder_name)
+
+    # Local client setup
     if client_source == ":memory:":
         client = QdrantClient(client_source)
+    # Qdrant Cloud client setup
     else:
         client = QdrantClient(
             url=client_source, api_key=qdrant_cloud_api_key)
 
+    # If desired, set up a new collection with the documents
+    # from the designated input folder
     if force_replace_collection:
         # Remove pre-existing collection
         if client.collection_exists(collection_name=collection_name):
@@ -70,6 +80,11 @@ def setup_vector_db(
 
 def query_vector_db_once_qdrant(
     client, encoder, question:str, config:dict[str]):
+    """
+    Query the vector database once, filter the retrieved documents
+    based on a custom threshold and return the answers in a convenient format
+    Returns a dictionary
+    """
 
     raw_answer = client.query_points(
         collection_name=config["collection_name"],
@@ -89,6 +104,11 @@ def query_vector_db_once_qdrant(
 
 def query_vector_db_list_qdrant(
     client, encoder, question_list:list[str], config:dict[str]):
+    """
+    Serialized version of query_vector_db_once_qdrant()
+    Utility function for evaluating retrieval results
+    Returns a list of dictionaries
+    """
     answer_list = [
         query_vector_db_once_qdrant(
             client, encoder, q, config) for q in question_list]
@@ -99,6 +119,11 @@ def query_vector_db_list_qdrant(
 def rag_setup_qdrant(
     config:dict[str], api_key_variable:str="OPENAI_API_KEY",
     qdrant_cloud_api_key_variable:str="QDRANT_CLOUD_API_KEY"):
+    """
+    An expansion on setup_vector_db(), which on top of the vector database client,
+    the encoder also returns the LLM client and supplies setup_vector_db()'s
+    arguments from a config dictionary
+    """
     vector_db_client, encoder = setup_vector_db(
         encoder_name=config["encoder_name"],
         client_source=config["client_source"],
@@ -116,6 +141,10 @@ def rag_setup_qdrant(
 
 
 def create_llm_qa_string(user_question:str, retrieved_docs:list[dict])->str:
+    """
+    Creates the LLM user prompt's text based on the retrieved documents
+    Returns a string with the user prompt's text
+    """
     user_prompt = f"Answer the following question:\n<Question>{user_question}\n</Question>\n\n"
     user_prompt += "These are the documents passed to you by Senior Dietician Bot<Context>\n"
 
@@ -129,7 +158,11 @@ def create_llm_qa_string(user_question:str, retrieved_docs:list[dict])->str:
 
 def llm_call(client:OpenAI, user_prompt:str,
              system_propmt_path:str, model="gpt-4o-mini",
-             temperature:float=0):
+             temperature:float=0)->str:
+    """
+    Function that makes the LLM call
+    Returns a string with only the LLM's chat completion text
+    """
 
     with open(system_propmt_path, "r") as f:
         system_prompt = f.read()
@@ -153,17 +186,23 @@ def llm_call(client:OpenAI, user_prompt:str,
 
 
 def rag_query_once_qdrant(
-    query:str, vector_db, encoder, api_client, config:dict[str])-> tuple[str, str, dict]:
+    query:str, vector_db:QdrantClient, encoder:SentenceTransformer,
+    api_client:OpenAI, config:dict[str])-> tuple[str, str, dict]:
+    """
+    Conduct a single RAG query
+    (retrieval + generation if relevant documents were successfully retrieved)
+    Returns a tuple of:
+    * user question (str)
+    * answer (str)
+    * retrieved documents (dict)
+    """
+    # Retrieval
     retrieved_doc_dict = query_vector_db_once_qdrant(
         vector_db, encoder, query, config)
 
     print("Documents retrieved")
-    # # Only return unique answers
-    # unique_answers = []
-    # [unique_answers.append(hit["answer"])
-    #  for hit in retrieved_doc_dict["retrieved"]
-    #  if hit["answer"] not in unique_answers]
 
+    # If relevant documents were retrieved, generate an answer with an LLM
     if len(retrieved_doc_dict["retrieved"]) > 0:
         user_prompt = create_llm_qa_string(query, retrieved_doc_dict["retrieved"])
 
@@ -172,6 +211,7 @@ def rag_query_once_qdrant(
             system_propmt_path=config["llm_system_prompt_path"],
             model=config["llm_model"],
             temperature=config["llm_temperature"])
+    # If no relevant documents were retrieved, return the fallback answer
     else:
         response = "Sorry, I don't have information on that. Please try a different question."
 
@@ -179,9 +219,14 @@ def rag_query_once_qdrant(
 
 
 def rag_query_list_qdrant(
-    queries:list[str], vector_db, encoder, api_client, config:dict[str]) -> tuple[list[str],list[str],list[dict]]:
+    queries:list[str], vector_db:QdrantClient, encoder:SentenceTransformer,
+    api_client:OpenAI, config:dict[str]) -> tuple[list[str],list[str],list[dict]]:
     """
-    Iterative version of rag_query_once_qdrant() for evaluation
+    Serialized version of rag_query_once_qdrant() for evaluation
+    Returns a tuple of three lists:
+    * a list of user question (str)
+    * a list answer (str)
+    * a list of retrieved documents (dict)
     """
     responses_raw = [rag_query_once_qdrant(
         q, vector_db, encoder, api_client, config) for q in queries]
