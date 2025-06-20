@@ -20,10 +20,8 @@ dependencies = [
     "torch==2.5.1 ; platform_machine != 'x86_64'",
     "torch==2.5.1+cu124 ; platform_machine == 'x86_64'",
     "streamlit>=1.46.0",
-    "seaborn>=0.13.2",
-    "haystack-ai==2.10.3",
-    "fastembed>=0.7.1",
     "uuid>=1.30",
+    "ipykernel>=6.29.5",
 ]
 
 [project.optional-dependencies]
