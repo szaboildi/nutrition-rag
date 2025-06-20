@@ -8,7 +8,7 @@ force_replace_collection    = "False"
 
 distance_type               = "COSINE"
 retrieve_k                  = 5
-min_similarity_threshold    = 0
+min_similarity_threshold    = -1
 
 llm_model                   = "gpt-4o-mini"
 llm_temperature             = 0
