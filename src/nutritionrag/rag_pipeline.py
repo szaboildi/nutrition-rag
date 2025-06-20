@@ -1,7 +1,6 @@
 import glob
 import os
 
-from fastembed import TextEmbedding, LateInteractionTextEmbedding, SparseTextEmbedding
 from qdrant_client import models, QdrantClient
 from sentence_transformers import SentenceTransformer
 
@@ -13,63 +12,15 @@ from openai import OpenAI
 
 
 def setup_vector_db(
-    encoder_name:str="intfloat/e5-base", sparse_retriever:str="BM25",
-    client_source:str=":memory:",
+    encoder_name:str="intfloat/e5-base", client_source:str=":memory:",
     qdrant_cloud_api_key:str="None", from_scratch:bool=False,
     input_folder:str="data/raw_input_files",
-    collection_name:str="dummy_name", dist_name:str="COSINE",
-    input_folder_qa:str="data",
-    relevance_score_file_prefix:str="sample_qa_passage_lvl",
-    sample_qa_file:str="sample_qa.json", hybrid:bool=False):
+    collection_name:str="dummy_name", dist_name:str="COSINE"):
 
-    if not hybrid:
-        encoder = SentenceTransformer(encoder_name)
-        if client_source == ":memory":
-            client = QdrantClient(client_source)
-        else:
-            client = QdrantClient(
-                url=client_source, api_key=qdrant_cloud_api_key)
 
-        if not from_scratch:
-            print("Vector database loaded")
-            return client, encoder
-
-        client.create_collection(
-            collection_name=collection_name,
-            vectors_config=models.VectorParams(
-                size=encoder.get_sentence_embedding_dimension(),  # Vector size is defined by used model
-                distance=getattr(models.Distance, dist_name.upper()),
-            ),
-        )
-
-        file_names = glob.glob(f"{input_folder}/*")
-        for file_name in file_names:
-            # Set up the passages
-            input_passages_dict = process_text(
-                path=file_name, input_folder_qa=input_folder_qa,
-                relevance_score_file_prefix=relevance_score_file_prefix,
-                sample_qa_file=sample_qa_file)
-
-            print(f"Text cleaned in {file_name}")
-
-            client.upload_points(
-                collection_name=collection_name,
-                points=[
-                    models.PointStruct(
-                        id=idx, vector=encoder.encode(
-                            doc["question"], normalize_embeddings=True).tolist(),
-                        payload=doc)
-                    for idx, doc in enumerate(input_passages_dict)
-                ],
-            )
-
-        print("Vector database created")
-        return client, encoder
-
-    # Hybrid retrieval
-    # Set up encoder and client
+    encoder = SentenceTransformer(encoder_name)
     if client_source == ":memory":
-            client = QdrantClient(client_source)
+        client = QdrantClient(client_source)
     else:
         client = QdrantClient(
             url=client_source, api_key=qdrant_cloud_api_key)
@@ -78,88 +29,34 @@ def setup_vector_db(
         print("Vector database loaded")
         return client, encoder
 
-    dense_embedding_model = TextEmbedding("intfloat/multilingual-e5-large")
-    bm25_embedding_model = SparseTextEmbedding("Qdrant/bm25")
-    late_interaction_embedding_model = LateInteractionTextEmbedding("colbert-ir/colbertv2.0")
+    client.create_collection(
+        collection_name=collection_name,
+        vectors_config=models.VectorParams(
+            size=encoder.get_sentence_embedding_dimension(),  # Vector size is defined by used model
+            distance=getattr(models.Distance, dist_name.upper()),
+        ),
+    )
 
     file_names = glob.glob(f"{input_folder}/*")
     for file_name in file_names:
         # Set up the passages
-        input_passages_dict = process_text(
-            path=file_name, input_folder_qa=input_folder_qa,
-            relevance_score_file_prefix=relevance_score_file_prefix,
-            sample_qa_file=sample_qa_file)
+        input_passages_dict = process_text(path=file_name)
 
         print(f"Text cleaned in {file_name}")
 
-    documents = [i["question"] for i in input_passages_dict]
-
-    dense_embeddings = list(dense_embedding_model.embed(doc for doc in documents))
-    bm25_embeddings = list(bm25_embedding_model.embed(doc for doc in documents))
-    late_interaction_embeddings = list(late_interaction_embedding_model.embed(doc for doc in documents))
-
-    client.create_collection(
-        "hybrid-search",
-        vectors_config={
-            "multilingual-e5-large": models.VectorParams(
-                size=encoder.get_sentence_embedding_dimension(),  # Vector size is defined by used model
-                distance=getattr(models.Distance, dist_name.upper()),
-            ),
-            "colbertv2.0": models.VectorParams(
-                size=len(late_interaction_embeddings[0][0]),
-                distance=getattr(models.Distance, dist_name.upper()),
-                multivector_config=models.MultiVectorConfig(
-                    comparator=models.MultiVectorComparator.MAX_SIM,
-                ),
-                hnsw_config=models.HnswConfigDiff(m=0)  #  Disable HNSW for reranking
-            ),
-        },
-        sparse_vectors_config={
-            sparse_retriever: models.SparseVectorParams(modifier=models.Modifier.IDF)
-        }
-    )
-
-    points = []
-    for idx, (dense_embedding, bm25_embedding, late_interaction_embedding, doc) in enumerate(zip(dense_embeddings, bm25_embeddings, late_interaction_embeddings, documents)):
-
-        point = models.PointStruct(
-            id=idx,
-            vector={
-                "multilingual-e5-large": dense_embedding,
-                "bm25": bm25_embedding.as_object(),
-                "colbertv2.0": late_interaction_embedding,
-            },
-            payload={"document": doc}
+        client.upload_points(
+            collection_name=collection_name,
+            points=[
+                models.PointStruct(
+                    id=idx, vector=encoder.encode(
+                        doc["question"], normalize_embeddings=True).tolist(),
+                    payload=doc)
+                for idx, doc in enumerate(input_passages_dict)
+            ],
         )
-        points.append(point)
 
-    operation_info = client.upsert(
-        collection_name="hybrid-search",
-        points=points
-    )
-
-
-    points = []
-
-    for idx, doc in enumerate(documents):
-        point = models.PointStruct(
-            id=idx,
-            vector={
-                encoder: models.Document(text=doc, model=encoder),
-                sparse_retriever: models.Document(text=doc, model="Qdrant/bm25"),
-                "colbertv2.0": models.Document(text=doc, model="colbert-ir/colbertv2.0"),
-            },
-            payload=input_passages_dict[idx]
-        )
-        points.append(point)
-
-    operation_info = client.upsert(
-        collection_name="hybrid-search",
-        points=points
-    )
-
-    return client, dense_embedding_model, bm25_embedding_model, late_interaction_embedding_model
-
+    print("Vector database created")
+    return client, encoder
 
 
 def query_vector_db_once_qdrant(
