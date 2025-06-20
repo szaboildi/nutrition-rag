@@ -69,6 +69,20 @@ def setup_vector_db(
                     for doc in input_passages_dict],
             )
 
+            # Attempt to retrieve based on similarity between the user question
+            # and concatenated question-answer pairs. Did not yield encouraging results
+            # (see eval_question_answer_similarity.ipynb)
+
+            # client.upload_points(
+            #     collection_name=collection_name,
+            #     points=[
+            #         models.PointStruct(
+            #             id=str(uuid4()), vector=encoder.encode(
+            #                 doc["question_answer"], normalize_embeddings=True).tolist(),
+            #             payload=doc)
+            #         for doc in input_passages_dict],
+            # )
+
         print("Vector database created")
         return client, encoder
 

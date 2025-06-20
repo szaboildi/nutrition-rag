@@ -18,7 +18,8 @@ def process_text(path):
     # TODO: add more preprocessing and cleaning to account for less clean inputs
 
     return [{"question": q.strip().replace("’", "'"),
-             "answer": a.strip().replace("’", "'")}
+             "answer": a.strip().replace("’", "'"),
+             "question_answer": f'''Question: {q.strip().replace("’", "'")}\nAnswer: {a.strip().replace("’", "'")}'''}
             for q,a in list(zip(qa_data_df.questions,qa_data_df.answer))]
 
 
