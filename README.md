@@ -18,17 +18,18 @@ The dependencies were logged using UV. If you'd like to run the scripts independ
 
 ## Setup
 1. Make sure you have Docker installed (and Docker Desktop running if using WSL).
-2. Create a `.env` file based on `.env.sample`. Replace the values with your Qdrant Cloud and OpenAI API keys.
-3. Allow the use of `direnv` with
+2. Clone this repository
+3. Create a `.env` file based on `.env.sample`. Replace the values with your Qdrant Cloud and OpenAI API keys.
+4. Allow the use of `direnv` with
 ```
 direnv allow .
 ```
-4. At this point, you can confirm that you are happy with the default configuration the `parameters.toml`. If not, change the parameters.
-5. Build the docker image with
+5. At this point, you can confirm that you are happy with the default configuration the `parameters.toml`. If not, change the parameters.
+6. Build the docker image with
 ```
 docker build --tag=nutritionrag:local .
 ```
-6. Run the docker image with (this might take a minute or two)
+7. Run the docker image with (this might take a minute or two)
 ```
 docker run -it --env-file .env -p 8080:8080 nutritionrag:local
 ```
