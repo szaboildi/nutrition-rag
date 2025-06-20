@@ -12,23 +12,25 @@ However, this functionality is implemented and ready to use (by changing the `mi
 4. Generation (or Fallback response): At most five question-answer pairs are passed on to the LLM (`gpt-4o` by default). The LLM is instructed with a system prompt about the task, including to give a fallback answer if the question cannot be answered based on the documents that were retrieved.
 If no question-answer pairs meet the minimum cosine similarity threshold (currently set to -1, so all hits are automatically passed on), then the LLM-based generation is skipped and a fallback answer is returned to the user.
 5. App: The final answer (whether LLM-generated or the filtering fallback response) is then displayed in a streamlit app (defined at `src/streamlit/app.py`) along with the 3 best-matching unique answers (and their best matching question).
+
 The app is dockerized and can be run locally following the setup instructions outlined below.
-The dependencies were logged using UV. If you'd like to run the scripts independently, follow the instructions in the Local Installation section.
+The dependencies were logged using UV. If you'd like to run the scripts independently, follow the instructions in the Local Installation section. There is a small set of 15 hand-annotated evaluation questions to test the model performance with at `data/eval/test_questions_raw.csv`.
+
 
 ## Setup
 1. Make sure you have Docker installed (and Docker Desktop running if using WSL).
 2. Clone this repository
 3. Create a `.env` file based on `.env.sample`. Replace the values with your Qdrant Cloud and OpenAI API keys.
-4. Allow the use of `direnv` with
+4. Load your `.env` file
 ```
-direnv allow .
+source .env
 ```
 5. At this point, you can confirm whether you are happy with the default configuration in `parameters.toml`. If not, change the parameters.
-6. Build the docker image with
+6. Build the docker image (this takes about 5-10 minutes) with
 ```
 docker build --tag=nutritionrag:local .
 ```
-7. Run the docker image with (this might take a minute or two)
+7. Run the docker image (this might take a minute or two until the interface appears) with
 ```
 docker run -it --env-file .env -p 8080:8080 nutritionrag:local
 ```
@@ -36,17 +38,28 @@ docker run -it --env-file .env -p 8080:8080 nutritionrag:local
 
 
 ## Local Installation (for Swapping Datasets)
-1. Install Python (3.10 recommended)
-2. Install UV with [your favorite method](https://docs.astral.sh/uv/getting-started/installation/#pypi)
-3. Set up a [Qdrant Cloud](https://cloud.qdrant.io) cluster and create an API key for it. If you want to have your vector database hosted locally, replace the `client_source` variable in the `parameters.toml` file with the string `":memory:"`.
-4. Add the Qdrant Cloud API key to the .env file
-5. Set up the dependencies through UV
+1. Install UV with [your favorite method](https://docs.astral.sh/uv/getting-started/installation/#pypi)
+2. Set up a [Qdrant Cloud](https://cloud.qdrant.io) cluster and create an API key for it. If you want to have your vector database hosted locally, replace the `client_source` variable in the `parameters.toml` file with the string `":memory:"`.
+3. Add the Qdrant Cloud API key to the `.env` file
+4. Reload your `.env` file
+```
+source .env
+```
+5. Create a virtual environment
+```
+uv venv .venv
+```
+6. Activate the virtual environment
+```
+source .venv/bin/activate
+```
+7. Set up the dependencies through UV
 ```
 uv sync
 ```
-6. Create the folder for the local raw input files
+8. Create the folder for the local raw input files
 ```mkdir data/raw_input_files```
-7. Move your input files to this new folder. They have to be `.json` files containing lists of question-list + answer dictionaries:
+9. Move your input files to this new folder. They have to be `.json` files containing lists of question-list + answer dictionaries:
 ```[
   {
     "questions": [
@@ -59,16 +72,16 @@ uv sync
   {...}
 ]
 ```
-7. Make sure to set the `force_replace_collection` parameter in the `parameters.toml` file to `"True"` (as a string) and that the `client_source` parameter points to either your local device (`":memory:"`) or a Qdrant Cloud cluster that you have writing access to. Make sure that `collection_name` is set to a name of your chosing (if it already exists, it will be overwritten).
-8. Run `rag_pipeline.py` script with
+10. Make sure to set the `force_replace_collection` parameter in the `parameters.toml` file to `"True"` (as a string) and that the `client_source` parameter points to either your local device (`":memory:"`) or a Qdrant Cloud cluster that you have writing access to. Make sure that `collection_name` is set to a name of your chosing (if it already exists, it will be overwritten).
+11. Run the `rag_pipeline.py` script with
 ```
-python src/nutritionrag/rag_pipeline.py
+uv run src/nutritionrag/rag_pipeline.py
 ```
-9. Rebuild the docker image with
+12. Rebuild the docker image (this takes about 5-10 minutes) with
 ```
 docker build --tag=nutritionrag:local .
 ```
-10. Run the new docker image with (this might take a minute or two)
+13. Run the new docker image (this might take a minute or two until the interface appears) with
 ```
 docker run -it --env-file .env -p 8080:8080 nutritionrag:local
 ```
@@ -80,13 +93,18 @@ In further steps this can be mitigated by increasing the original dataset to inc
 
 As an alternative to the question-to-question similarity search, a question to Q&A search was also briefly explored, but this did not yield substantial improvements in performance.
 
+
 ## Assumptions
+
 ### Scope
 It is assumed that this is an incomplete FAQ dataset and the pool of users can not be further restricted than humans with diabetes. If the dataset is more specific (e.g. only adults), then the prompt could and should be further tweaked to implement additional failsafes to not respond to questions about children or add caveats about allergies, etc.
+
 ### Structure of the dataset
 Datasets come in a `.json` format, with multiple questions per answer and the answers are typically short, often not matching the natural language features of all of the questions that they are paired with.
+
 ### Language
 The language of the questions is assumed to be exclusively English. If that is no longer the case, the mbedding model (and potentially the LLM backend) might need to be replaced. The current setup only suports full deletion and recreation.
+
 
 ## Possible expansions in the future
 
