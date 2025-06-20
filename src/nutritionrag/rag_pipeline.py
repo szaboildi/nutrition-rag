@@ -17,7 +17,6 @@ def setup_vector_db(
     input_folder:str="data/raw_input_files",
     collection_name:str="dummy_name", dist_name:str="COSINE"):
 
-
     encoder = SentenceTransformer(encoder_name)
     if client_source == ":memory":
         client = QdrantClient(client_source)
