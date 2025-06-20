@@ -1,19 +1,14 @@
 [default]
 input_text_folder           = "data/raw_input_files"
-input_folder_qa             = "data"
 
 client_source               = "https://75ce65ac-3f32-4f99-9994-130310c38fc1.europe-west3-0.gcp.cloud.qdrant.io"
 encoder_name                = "intfloat/e5-base"
 collection_name             = "nutrition_faq"
 
 distance_type               = "COSINE"
-retrieve_k_pre_rank         = 15
 retrieve_k                  = 5
-min_similarity_threshold    = 0
-sparse_retriever            = "BM25"
+min_similarity_threshold    = 1.0
 
 llm_model                   = "gpt-4o-mini"
 llm_temperature             = 0
 llm_system_prompt_path      = "prompts/llm_system_prompt.txt"
-llm_user_prompt_template    = "prompts/llm_user_prompt_template_haystack.txt"
-QA_export_folder            = "data/rag_qa"
