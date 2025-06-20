@@ -226,12 +226,12 @@ def main():
     #     config[args.config_name])
     # print(f'Retrieved {len(answer["retrieved"])} documents')
 
-    query, response, retrieved_docs = rag_query_once_qdrant(
-        "What should I snack on between lunch and dinner if I have diabetes?",
-        vector_db_client, encoder, gen_api_client, config=config[args.config_name])
-    print(query, response, retrieved_docs, sep="\n")
+    # query, response, retrieved_docs = rag_query_once_qdrant(
+    #     "What should I snack on between lunch and dinner if I have diabetes?",
+    #     vector_db_client, encoder, gen_api_client, config=config[args.config_name])
+    # print(query, response, retrieved_docs, sep="\n")
 
-    print("#########################################")
+    # print("#########################################")
 
     # query, response, full_response = rag_query_once_qdrant(
     #     "How often should a dog eat?",
