@@ -6,7 +6,6 @@ The pipeline contains five components:
 2. Retrieval (happens within `src/nutritionrag/rag_pipeline.py`):
 Retrieves question-answer pairs based on the similarity between the user's question and the previous questions in an FAQ dataset (cosine similarity with dense embeddings using the `intfloat/e5-base` model). Since the dataset contains five sample questions for each answer, the same answer can be retrieved multiple times (just with different questions). The current retrieval limit (k) is set to 5 by default (in `parameters.toml`).
 The question-to-question similarity approach was chosen because the answers are often short, non-descript and even contain references to the particular syntax of only one of the questions (e.g. polarity markers). With this limited dataset the questions offer more variation. The default vector database is hosted on Qdrant Cloud.
-The
 3. Filtering of the results (currently inactive with threshold set to -1; happens within `src/nutritionrag/rag_pipeline.py`):
 The current threshold for a retrieved match is set to -1 (i.e. no minimum similarity is required), because based on the preliminary evaluations conducted in `src/nutritionrag/eval.ipynb`, the LLM was actually more likely to default to the fallback option than would have been strictly necessary.
 However, this functionality is implemented and ready to use (by changing the `min_similarity_threshold` parameter in the `parameters.toml` file), if this is required in the future.
@@ -14,7 +13,7 @@ However, this functionality is implemented and ready to use (by changing the `mi
 If no question-answer pairs meet the minimum cosine similarity threshold (currently set to -1, so all hits are automatically passed on), then the LLM-based generation is skipped and a fallback answer is returned to the user.
 5. App: The final answer (whether LLM-generated or the filtering fallback response) is then displayed in a streamlit app (defined at `src/streamlit/app.py`) along with the 3 best-matching unique answers (and their best matching question).
 The app is dockerized and can be run locally following the setup instructions outlined below.
-The dependencies were logged using UV. If you'd like to run the scripts independently, follow the instructions in the Locan Installation section.
+The dependencies were logged using UV. If you'd like to run the scripts independently, follow the instructions in the Local Installation section.
 
 ## Setup
 1. Make sure you have Docker installed (and Docker Desktop running if using WSL).
@@ -24,7 +23,7 @@ The dependencies were logged using UV. If you'd like to run the scripts independ
 ```
 direnv allow .
 ```
-5. At this point, you can confirm that you are happy with the default configuration the `parameters.toml`. If not, change the parameters.
+5. At this point, you can confirm whether you are happy with the default configuration in `parameters.toml`. If not, change the parameters.
 6. Build the docker image with
 ```
 docker build --tag=nutritionrag:local .
@@ -33,6 +32,7 @@ docker build --tag=nutritionrag:local .
 ```
 docker run -it --env-file .env -p 8080:8080 nutritionrag:local
 ```
+8. You can open the app in your browser at `http://0.0.0.0:8080`
 
 
 ## Local Installation (for Swapping Datasets)
@@ -100,7 +100,7 @@ The language of the questions is assumed to be exclusively English. If that is n
 A dedicated API could be developed to process updates in the database automatically. This could cover files being removed from the database or partially updated.
 
 ### Monitoring:
-1. Detailed logging (e.g. Prometheur & Grafana):
+1. Detailed logging (e.g. Prometheus & Grafana):
 These logs can be monitored for latency, outages, etc.
 Quality can be monitored by tracking the rate of fallback answers. For example, an increase in the rate of fallback answers could indicate a shift in user queries (a worse fit between the FAQ dataset and the user questions) or a sharp increase could be caused by bugs or outages in the retrieval pipeline.
 2. User feedback: Another option would be to regularly monitor user feedback to identify either shifts in usage patterns or patterns that were otherwise missed during development.
