@@ -60,19 +60,19 @@ def setup_vector_db(
 
 
 def query_vector_db_once_qdrant(
-    client, encoder, question:str, collection_name:str="dummy_name", k:int=5,
-    dist_name:str="COSINE"):
+    client, encoder, question:str, config:dict[str]):
 
     raw_answer = client.query_points(
-        collection_name=collection_name,
+        collection_name=config["collection_name"],
         query=encoder.encode(question, normalize_embeddings=True).tolist(),
-        limit=k).points
+        limit=int(config["retrieve_k"])).points
 
     processed_answer = {"user_question": question,
     "retrieved": [{
         "question": hit.payload["question"],
         "answer": hit.payload["answer"],
-        dist_name.lower(): hit.score} for hit in raw_answer]
+        config["distance_type"].lower(): hit.score} for hit in raw_answer
+                  if hit.score >= float(config["min_similarity_threshold"])]
     }
 
     return processed_answer
@@ -160,17 +160,16 @@ def rag_query_once_qdrant(
     #  for hit in retrieved_doc_dict["retrieved"]
     #  if hit["answer"] not in unique_answers]
 
-    retrieved_docs_filtered = [
-        doc for doc in retrieved_doc_dict["retrieved"]
-        if doc["score"] >= config["min_similarity_threshold"]]
+    if len(retrieved_doc_dict["retrieved"]) > 0:
+        user_prompt = create_llm_qa_string(query, retrieved_doc_dict["retrieved"])
 
-    user_prompt = create_llm_qa_string(query, retrieved_doc_dict["retrieved"])
-
-    response = llm_call(
-        client=api_client, user_prompt=user_prompt,
-        system_propmt_path=config["llm_system_prompt_path"],
-        model=config["llm_model"],
-        temperature=config["llm_temperature"])
+        response = llm_call(
+            client=api_client, user_prompt=user_prompt,
+            system_propmt_path=config["llm_system_prompt_path"],
+            model=config["llm_model"],
+            temperature=config["llm_temperature"])
+    else:
+        response = "Sorry, I don't have information on that. Please try a different question."
 
     return query, response, retrieved_doc_dict
 
