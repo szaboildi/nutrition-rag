@@ -73,15 +73,11 @@ uv sync
 ]
 ```
 10. Make sure to set the `force_replace_collection` parameter in the `parameters.toml` file to `"True"` (as a string) and that the `client_source` parameter points to either your local device (`":memory:"`) or a Qdrant Cloud cluster that you have writing access to. Make sure that `collection_name` is set to a name of your chosing (if it already exists, it will be overwritten).
-11. Run the `rag_pipeline.py` script with
-```
-uv run src/nutritionrag/rag_pipeline.py
-```
-12. Rebuild the docker image (this takes about 5-10 minutes) with
+11. Rebuild the docker image (this takes about 5-10 minutes) with
 ```
 docker build --tag=nutritionrag:local .
 ```
-13. Run the new docker image (this might take a minute or two until the interface appears) with
+12. Run the new docker image (this might take a minute or two until the interface appears) with
 ```
 docker run -it --env-file .env -p 8080:8080 nutritionrag:local
 ```

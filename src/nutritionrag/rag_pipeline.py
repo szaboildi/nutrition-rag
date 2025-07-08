@@ -34,14 +34,14 @@ def setup_vector_db(
         client = QdrantClient(
             url=client_source, api_key=qdrant_cloud_api_key)
 
-    # If desired, set up a new collection with the documents
-    # from the designated input folder
-    if force_replace_collection:
-        # Remove pre-existing collection
-        if client.collection_exists(collection_name=collection_name):
+    # If forced-replacement is requested or the client name doesn't exist,
+    # set up a brand new collection from local files
+    if force_replace_collection or not client.collection_exists(collection_name=collection_name):
+        # In case of forced replacement, remove pre-existing collection
+        if client.collection_exists(collection_name=collection_name) and force_replace_collection:
             client.delete_collection(collection_name=collection_name)
 
-        # Recreate collection
+        # (Re-)create collection
         client.create_collection(
             collection_name=collection_name,
             vectors_config=models.VectorParams(
@@ -83,10 +83,11 @@ def setup_vector_db(
             #         for doc in input_passages_dict],
             # )
 
+        # Return the client with the newly created database and the encoder
         print("Vector database created")
         return client, encoder
 
-    # Otherwise load pre-existing collection and return it to the user
+    # Otherwise load pre-existing collection and return it to the user as is
     else:
         print("Vector database loaded")
         return client, encoder

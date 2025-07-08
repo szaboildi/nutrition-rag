@@ -4,6 +4,7 @@ FROM ghcr.io/astral-sh/uv:python3.10-bookworm-slim
 COPY prompts prompts
 COPY parameters.toml parameters.toml
 COPY pyproject.toml pyproject.toml
+COPY data data
 COPY src src
 
 # Set up dependencies
